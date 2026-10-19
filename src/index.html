@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>题迹 AlgoLog</title>
+    <link rel="icon" type="image/png" href="assets/icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="sidebar-glow"></div>
+
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"><span>题</span></div>
+          <div class="brand-copy">
+            <h1>题迹</h1>
+            <p>ALGO LOG</p>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="主导航">
+          <p class="nav-label">工作台</p>
+          <button class="nav-item active" type="button" data-view="dashboard">
+            <span class="nav-icon" data-icon="grid"></span>
+            <span>总览</span>
+          </button>
+          <button class="nav-item" type="button" data-view="records">
+            <span class="nav-icon" data-icon="list"></span>
+            <span>刷题记录</span>
+            <span class="nav-badge" id="nav-record-count">0</span>
+          </button>
+          <button class="nav-item" type="button" data-view="sites">
+            <span class="nav-icon" data-icon="globe"></span>
+            <span>题站管理</span>
+            <span class="nav-badge" id="nav-site-count">0</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+
+        <div class="side-mini" id="side-mini">
+          <div class="side-mini-top">
+            <span class="side-mini-icon" data-icon="flame"></span>
+            <span>当前连续</span>
+            <strong id="side-streak">0 天</strong>
+          </div>
+          <p id="side-streak-note">今天还没有记录，开个好头吧。</p>
+          <div class="side-mini-bar"><span id="side-streak-bar"></span></div>
+        </div>
+
+        <div class="side-actions">
+          <button class="side-link" type="button" data-action="export-data">
+            <span data-icon="download"></span>
+            <span>导出备份</span>
+          </button>
+          <button class="side-link" type="button" data-action="import-data">
+            <span data-icon="upload"></span>
+            <span>导入备份</span>
+          </button>
+          <button class="side-link" type="button" data-action="reveal-data">
+            <span data-icon="folder"></span>
+            <span>数据目录</span>
+          </button>
+        </div>
+
+        <div class="side-foot">
+          <span class="status-dot"></span>
+          <span>本地存储 · v<span id="app-version">1.0.0</span></span>
+        </div>
+      </aside>
+
+      <main class="main" id="main-scroll">
+        <header class="topbar">
+          <div class="topbar-copy">
+            <p class="eyebrow" id="page-eyebrow">OVERVIEW</p>
+            <h1 id="page-title">总览</h1>
+            <p class="topbar-sub" id="page-subtitle">把每一次 AC，都变成看得见的积累。</p>
+          </div>
+          <div class="top-actions">
+            <span class="today-label" id="today-label"></span>
+            <span class="save-pill" id="save-pill" data-state="saved">
+              <span class="save-dot"></span>
+              <span id="save-text">本地数据已加载</span>
+            </span>
+            <button class="btn btn-primary" type="button" data-action="add-record">
+              <span data-icon="plus"></span>
+              记录一题
+            </button>
+          </div>
+        </header>
+
+        <section class="view view-dashboard" id="view-dashboard" aria-label="总览"></section>
+        <section class="view view-records" id="view-records" aria-label="刷题记录" hidden></section>
+        <section class="view view-sites" id="view-sites" aria-label="题站管理" hidden></section>
+      </main>
+    </div>
+
+    <div id="modal-root"></div>
+    <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
+
+    <noscript>题迹需要启用 JavaScript 才能运行。</noscript>
+    <script src="renderer.js"></script>
+  </body>
+</html>

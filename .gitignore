@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Packaged apps and build output
+release/
+release-*/
+题迹AlgoLog/
+app-test/
+
+# Caches and local test data
+.npm-cache/
+.electron-cache/
+.eb-cache/
+.dev-data/
+.test-*/
+.window-check/
+sysicons/
+shellicons/
+_archive/
+
+# Logs
+*.log
+
+# Local diagnostic / test artifacts (not part of the project)
+/desktop*.png
+/exe-icon.png
+/ico-*.png
+/icon-*.png
+/shortcut-icon*.png
+/ascii-icon.png
+/*-sheet.png
+/app-icon*.ico
+/*.lnk
+/启动题迹.exe
+/启动题迹.cmd
+/launcher.cs
+/build/icon-bmp.ico

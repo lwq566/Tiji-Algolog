@@ -1,0 +1,55 @@
+{
+  "name": "algolog",
+  "version": "1.0.0",
+  "description": "题迹 - 本地算法竞赛刷题记录桌面应用",
+  "main": "main.js",
+  "private": true,
+  "author": "题迹 AlgoLog",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win zip"
+  },
+  "devDependencies": {
+    "electron": "44.9.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.algolog.desktop",
+    "productName": "题迹 AlgoLog",
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "compression": "normal",
+    "artifactName": "TiJi-AlgoLog-${version}-win64.${ext}",
+    "extraFiles": [
+      {
+        "from": "使用说明.txt",
+        "to": "使用说明.txt"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "executableName": "TiJi-AlgoLog",
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  }
+}
