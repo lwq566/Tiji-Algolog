@@ -106,23 +106,3 @@ scripts/ui-test.mjs  自动化 UI 回归测试（开发用）
 screenshots/         README 使用的界面截图
 ```
 
-## 发布到 GitHub
-
-项目已经初始化过 Git 和 `.gitignore`，`node_modules/`、`release/`、测试缓存和构建产物不会被提交。
-
-首次发布可以使用 GitHub Desktop：
-
-1. 打开 GitHub Desktop，登录 GitHub 账号。
-2. `File → Add local repository`，选择 `D:\deepseekwork`。
-3. 点击顶部的 `Publish repository`，填写名称（例如 `TiJi-AlgoLog`），选择 Public 或 Private。
-4. 发布后，在 GitHub 仓库的 `Releases` 页面新建 `v1.0.0`，把 `release/TiJi-AlgoLog-1.0.0-win64-fixed.zip` 作为附件上传。
-
-命令行方式：
-
-```bash
-git remote add origin https://github.com/<你的用户名>/TiJi-AlgoLog.git
-git branch -M main
-git push -u origin main
-```
-
-> 打包 ZIP 约 146 MB，超过 GitHub 普通文件的 100 MB 限制，因此它被 `.gitignore` 排除，应该放到 Releases 附件里，而不是直接提交进仓库。
