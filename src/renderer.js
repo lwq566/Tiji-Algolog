@@ -40,6 +40,7 @@
     target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.7"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>',
     check: '<path d="m5 12.5 4.3 4.3L19 7"/>',
     'check-circle': '<circle cx="12" cy="12" r="9"/><path d="m8 12.2 2.7 2.8L16.3 9"/>',
+    play: '<path d="M8 5.5v13l11-6.5Z" fill="currentColor" stroke="none"/>',
     edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7.8 18.2 3 20l1.8-4.8Z"/>',
     trash: '<path d="M4 6h16M9 6V3.5h6V6M6.5 6l.8 14.5h9.4L17.5 6"/><path d="M10 10v7M14 10v7"/>',
     external: '<path d="M14 4h6v6"/><path d="M20 4 10.5 13.5"/><path d="M19 14.5V20H4V5h5.5"/>',
@@ -172,9 +173,11 @@
     async loadData() {
       try {
         const raw = localStorage.getItem('algolog-data');
-        return { data: raw ? JSON.parse(raw) : { version: 1, sites: [], records: [] } };
+        return {
+          data: raw ? JSON.parse(raw) : { version: 1, sites: [], records: [], todos: [] },
+        };
       } catch {
-        return { data: { version: 1, sites: [], records: [] } };
+        return { data: { version: 1, sites: [], records: [], todos: [] } };
       }
     },
     async saveData(data) {
@@ -202,7 +205,7 @@
   const api = window.algolog || fallbackApi;
 
   const state = {
-    data: { version: 1, sites: [], records: [] },
+    data: { version: 1, sites: [], records: [], todos: [] },
     view: 'dashboard',
     monthCursor: todayKey().slice(0, 7),
     selectedDate: todayKey(),
@@ -271,7 +274,33 @@
       });
     }
 
-    return { version: 1, sites, records };
+    const todos = [];
+    const todoIds = new Set();
+    for (const item of Array.isArray(data.todos) ? data.todos : []) {
+      if (!item || typeof item !== 'object') continue;
+      const id = String(item.id || '').trim();
+      const siteId = String(item.siteId || '').trim();
+      const problemTitle = String(item.problemTitle || '').trim();
+      const problemNumber = String(item.problemNumber || '').trim();
+      if (!id || !siteIds.has(siteId) || !problemTitle || !problemNumber) continue;
+      if (todoIds.has(id)) continue;
+      todoIds.add(id);
+      todos.push({
+        id,
+        siteId,
+        problemNumber,
+        problemTitle,
+        difficulty: String(item.difficulty || '').trim(),
+        tags: Array.isArray(item.tags)
+          ? [...new Set(item.tags.map((tag) => String(tag).trim()).filter(Boolean))].slice(0, 12)
+          : [],
+        note: String(item.note || '').trim().slice(0, 500),
+        createdAt: item.createdAt || new Date().toISOString(),
+        updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+      });
+    }
+
+    return { version: 1, sites, records, todos };
   }
 
   const siteById = (id) => state.data.sites.find((site) => site.id === id) || null;
@@ -449,6 +478,11 @@
       title: '总览',
       subtitle: '把每一次 AC，都变成看得见的积累。',
     },
+    todos: {
+      eyebrow: 'TO-DO LIST',
+      title: '待做题目',
+      subtitle: '先把想做的题收集起来，再一道一道解决。',
+    },
     records: {
       eyebrow: 'PRACTICE LOG',
       title: '刷题记录',
@@ -481,6 +515,7 @@
       item.classList.toggle('active', item.dataset.view === state.view);
     });
 
+    $('#nav-todo-count').textContent = state.data.todos.length;
     $('#nav-record-count').textContent = state.data.records.length;
     $('#nav-site-count').textContent = state.data.sites.length;
     $('#app-version').textContent = state.info.version || '1.0.0';
@@ -514,6 +549,7 @@
 
     const sections = {
       dashboard: $('#view-dashboard'),
+      todos: $('#view-todos'),
       records: $('#view-records'),
       sites: $('#view-sites'),
     };
@@ -523,6 +559,7 @@
     });
 
     if (state.view === 'dashboard') renderDashboard(sections.dashboard);
+    else if (state.view === 'todos') renderTodosView(sections.todos);
     else if (state.view === 'records') renderRecordsView(sections.records);
     else renderSitesView(sections.sites);
 
@@ -1054,6 +1091,99 @@
     `;
   }
 
+  /* To-do ------------------------------------------------------------------- */
+
+  function renderTodosView(root) {
+    const todos = [...state.data.todos].sort((a, b) =>
+      String(b.createdAt).localeCompare(String(a.createdAt)),
+    );
+    const hasSites = state.data.sites.length > 0;
+
+    const intro = `
+      <div class="sites-intro todo-intro">
+        <div>
+          <h2>待做清单 <span class="card-pill">${todos.length} 道</span></h2>
+          <p>先收集想做的题；点“开始做”会带入刷题记录，保存后才从清单移除。</p>
+        </div>
+        <button class="btn btn-primary" type="button" data-action="add-todo">${icon('plus')} 添加待做</button>
+      </div>
+    `;
+
+    if (!hasSites) {
+      root.innerHTML = `
+        ${intro}
+        <div class="records-empty">
+          <div class="empty">
+            <div class="empty-icon" data-icon="globe"></div>
+            <h3>先添加一个题站</h3>
+            <p>待做题目需要选择题目所在的网站。先到题站管理中添加 Codeforces、洛谷等题站。</p>
+            <button class="btn btn-primary" type="button" data-action="add-site">${icon('plus')} 添加题站</button>
+          </div>
+        </div>
+      `;
+      hydrateIcons(root);
+      return;
+    }
+
+    if (!todos.length) {
+      root.innerHTML = `
+        ${intro}
+        <div class="records-empty">
+          <div class="empty">
+            <div class="empty-icon" data-icon="clock"></div>
+            <h3>还没有待做题目</h3>
+            <p>把想做的题先记在这里。开始做时会自动带入题号、题目、难度和标签，保存后从清单中移除。</p>
+            <button class="btn btn-primary" type="button" data-action="add-todo">${icon('plus')} 添加第一道待做</button>
+          </div>
+        </div>
+      `;
+      hydrateIcons(root);
+      return;
+    }
+
+    root.innerHTML = `
+      ${intro}
+      <div class="record-list-card todo-list-card">
+        ${todos.map(renderTodoRow).join('')}
+      </div>
+    `;
+    hydrateIcons(root);
+  }
+
+  function renderTodoRow(todo) {
+    const site = siteById(todo.siteId);
+    const tags = (todo.tags || []).slice(0, 4);
+    const extraTags = (todo.tags || []).length - tags.length;
+    const addedDate = new Date(todo.createdAt);
+    const addedText = Number.isNaN(addedDate.getTime())
+      ? ''
+      : `加入于 ${formatDateLong(dateKey(addedDate))}`;
+
+    return `
+      <article class="record-row todo-row">
+        <span class="record-no" title="${escapeHtml(todo.problemNumber)}">${escapeHtml(todo.problemNumber)}</span>
+        <div class="record-main">
+          <div class="todo-title-line">
+            <span class="record-title" title="${escapeHtml(todo.problemTitle)}">${escapeHtml(todo.problemTitle)}</span>
+            <span class="todo-added">${addedText}</span>
+          </div>
+          <div class="record-meta">
+            <span class="site-chip"><i style="background: ${safeColor(site?.color)}"></i>${escapeHtml(site?.name || '未知题站')}</span>
+            ${todo.difficulty ? `<span class="difficulty-chip ${difficultyClass(todo.difficulty)}">${escapeHtml(todo.difficulty)}</span>` : ''}
+            ${tags.map((tag) => `<span class="tag-chip">${escapeHtml(tag)}</span>`).join('')}
+            ${extraTags > 0 ? `<span class="tag-chip">+${extraTags}</span>` : ''}
+          </div>
+          ${todo.note ? `<p class="todo-note">${escapeHtml(todo.note)}</p>` : ''}
+        </div>
+        <div class="todo-actions">
+          <button class="btn btn-soft todo-start" type="button" data-action="start-todo" data-id="${escapeHtml(todo.id)}" title="带入刷题记录开始做">${icon('play')} 开始做</button>
+          <button class="icon-btn" type="button" data-action="edit-todo" data-id="${escapeHtml(todo.id)}" title="编辑待做题目" aria-label="编辑待做题目">${icon('edit')}</button>
+          <button class="icon-btn danger" type="button" data-action="delete-todo" data-id="${escapeHtml(todo.id)}" title="删除待做题目" aria-label="删除待做题目">${icon('trash')}</button>
+        </div>
+      </article>
+    `;
+  }
+
   /* Sites ------------------------------------------------------------------- */
 
   function renderSitesView(root) {
@@ -1228,10 +1358,11 @@
     const siteId = state.data.sites.some((site) => site.id === requestedSiteId)
       ? requestedSiteId
       : state.data.sites[0].id;
-    const number = record?.problemNumber || '';
-    const title = record?.problemTitle || '';
+    const number = record?.problemNumber || presets.problemNumber || '';
+    const title = record?.problemTitle || presets.problemTitle || '';
     const difficulty = record?.difficulty ?? presets.difficulty ?? '';
-    const tags = (record?.tags || []).join(', ');
+    const tags = (record ? record.tags || [] : presets.tags || []).join(', ');
+    const todoId = !record && presets.todoId ? String(presets.todoId) : '';
 
     const selectedSite = siteById(siteId);
     const siteOptions = state.data.sites
@@ -1253,13 +1384,14 @@
           <div class="modal-head">
             <div>
               <h2 class="modal-title" id="record-modal-title">${record ? '编辑刷题记录' : '记录一道题'}</h2>
-              <p class="modal-sub">${record ? '修改后会自动保存到本地。' : '写下题号、题目和题站，今天的努力就有迹可循。'}</p>
+              <p class="modal-sub">${record ? '修改后会自动保存到本地。' : todoId ? '来自待做清单；保存后这道题会从待做中移除。' : '写下题号、题目和题站，今天的努力就有迹可循。'}</p>
             </div>
             <button class="modal-close" type="button" data-action="close-modal" aria-label="关闭">${icon('x')}</button>
           </div>
           <form class="modal-form" id="record-form" novalidate>
             <div class="modal-body">
               <input type="hidden" name="recordId" value="${escapeHtml(record?.id || '')}" />
+              <input type="hidden" name="todoId" value="${escapeHtml(todoId)}" />
               <div class="form-grid">
                 <div class="field">
                   <label for="record-date">日期 <span class="required">*</span></label>
@@ -1301,7 +1433,7 @@
               <button class="btn btn-ghost" type="button" data-action="close-modal">取消</button>
               <div class="spacer"></div>
               ${
-                record
+                record || todoId
                   ? ''
                   : `<button class="btn btn-soft" type="submit" name="intent" value="continue">保存并再记一题</button>`
               }
@@ -1317,24 +1449,26 @@
     });
   }
 
-  function updateTagPreview() {
-    const input = $('#record-tags');
-    const preview = $('#tag-preview');
+  function updateTagPreview(inputSelector = '#record-tags', previewSelector = '#tag-preview') {
+    const input = $(inputSelector);
+    const preview = $(previewSelector);
     if (!input || !preview) return;
     preview.innerHTML = parseTags(input.value)
       .map((tag) => `<span class="tag-chip">${escapeHtml(tag)}</span>`)
       .join('');
   }
 
-  function toggleTag(tag) {
-    const input = $('#record-tags');
+  function toggleTag(tag, element = null) {
+    const isTodo = Boolean(element?.closest('#todo-form'));
+    const input = isTodo ? $('#todo-tags') : $('#record-tags');
     if (!input) return;
     const tags = parseTags(input.value);
     const index = tags.indexOf(tag);
     if (index >= 0) tags.splice(index, 1);
     else if (tags.length < 8) tags.push(tag);
     input.value = tags.join(', ');
-    updateTagPreview();
+    if (isTodo) updateTodoTagPreview();
+    else updateTagPreview();
     input.focus();
   }
 
@@ -1345,6 +1479,7 @@
 
     const formData = new FormData(form);
     const recordId = String(formData.get('recordId') || '');
+    const todoId = String(formData.get('todoId') || '');
     const date = String(formData.get('date') || '');
     const siteId = String(formData.get('siteId') || '');
     const problemNumber = String(formData.get('problemNumber') || '').trim();
@@ -1398,6 +1533,15 @@
         });
       }
 
+      let completedTodo = false;
+      if (!existing && todoId) {
+        const todoIndex = state.data.todos.findIndex((todo) => todo.id === todoId);
+        if (todoIndex >= 0) {
+          state.data.todos.splice(todoIndex, 1);
+          completedTodo = true;
+        }
+      }
+
       if (!recordId && state.filters.date && state.filters.date !== date) {
         state.filters.date = null;
       }
@@ -1408,7 +1552,13 @@
       await persist();
       closeModal();
       render();
-      showToast(existing ? '记录已更新。' : '记录已保存。');
+      showToast(
+        existing
+          ? '记录已更新。'
+          : completedTodo
+            ? '已保存记录，并从待做清单移除。'
+            : '记录已保存。',
+      );
 
       if (intent === 'continue' && !existing) {
         setTimeout(() => {
@@ -1423,6 +1573,209 @@
         });
       }
     }
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /*  To-do modal                                                              */
+  /* ------------------------------------------------------------------------ */
+
+  function requestAddTodo() {
+    if (!state.data.sites.length) {
+      showToast('请先在题站管理中添加一个题站，再添加待做题目。', {
+        type: 'info',
+        actionLabel: '去添加',
+        onAction: () => {
+          navigate('sites');
+          setTimeout(() => openSiteModal(), 120);
+        },
+      });
+      return;
+    }
+    openTodoModal();
+  }
+
+  function openTodoModal(todoId = null) {
+    if (!state.data.sites.length) {
+      requestAddTodo();
+      return;
+    }
+
+    const todo = todoId
+      ? state.data.todos.find((item) => item.id === todoId) || null
+      : null;
+    const requestedSiteId = todo?.siteId;
+    const siteId = state.data.sites.some((site) => site.id === requestedSiteId)
+      ? requestedSiteId
+      : state.data.sites[0].id;
+    const selectedSite = siteById(siteId);
+    const siteOptions = state.data.sites
+      .map(
+        (site) =>
+          `<option value="${escapeHtml(site.id)}" ${site.id === siteId ? 'selected' : ''}>${escapeHtml(site.name)}</option>`,
+      )
+      .join('');
+    const quickTags = QUICK_TAGS.map(
+      (tag) => `<button type="button" data-action="toggle-tag" data-tag="${tag}">${tag}</button>`,
+    ).join('');
+    const datalist = DIFFICULTY_OPTIONS.map((value) => `<option value="${value}"></option>`).join('');
+
+    const html = `
+      <div class="modal-backdrop" data-modal-backdrop>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="todo-modal-title">
+          <div class="modal-head">
+            <div>
+              <h2 class="modal-title" id="todo-modal-title">${todo ? '编辑待做题目' : '添加待做题目'}</h2>
+              <p class="modal-sub">${todo ? '修改后会保留原有加入时间。' : '先把想做的题收进来，之后点“开始做”再带入刷题记录。'}</p>
+            </div>
+            <button class="modal-close" type="button" data-action="close-modal" aria-label="关闭">${icon('x')}</button>
+          </div>
+          <form class="modal-form" id="todo-form" novalidate>
+            <div class="modal-body">
+              <input type="hidden" name="todoId" value="${escapeHtml(todo?.id || '')}" />
+              <div class="form-grid">
+                <div class="field">
+                  <label for="todo-site">题站 <span class="required">*</span></label>
+                  <select class="select" id="todo-site" name="siteId">${siteOptions}</select>
+                  <p class="field-hint" id="todo-site-hint">${escapeHtml(selectedSite ? displayHost(selectedSite.url) : '')}</p>
+                </div>
+                <div class="field">
+                  <label for="todo-number">题号 <span class="required">*</span></label>
+                  <input class="input" id="todo-number" name="problemNumber" value="${escapeHtml(todo?.problemNumber || '')}" placeholder="如 CF1845D / P1001" maxlength="80" autocomplete="off" data-autofocus />
+                </div>
+                <div class="field full">
+                  <label for="todo-title">题目名称 <span class="required">*</span></label>
+                  <input class="input" id="todo-title" name="problemTitle" value="${escapeHtml(todo?.problemTitle || '')}" placeholder="如 最大子段和" maxlength="200" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="todo-difficulty">难度</label>
+                  <input class="input" id="todo-difficulty" name="difficulty" value="${escapeHtml(todo?.difficulty || '')}" list="todo-difficulty-list" placeholder="如 提高+/省选- 或 1800" maxlength="40" autocomplete="off" />
+                  <datalist id="todo-difficulty-list">${datalist}</datalist>
+                </div>
+                <div class="field">
+                  <label for="todo-tags">标签</label>
+                  <input class="input" id="todo-tags" name="tags" value="${escapeHtml((todo?.tags || []).join(', '))}" placeholder="用逗号分隔，如：动态规划, 二分" maxlength="240" autocomplete="off" />
+                  <p class="field-hint">最多 8 个，用逗号或空格分隔。</p>
+                </div>
+                <div class="field full">
+                  <label for="todo-note">备注</label>
+                  <textarea class="input" id="todo-note" name="note" placeholder="可选：题目来源、想练的知识点、题解链接……" maxlength="500">${escapeHtml(todo?.note || '')}</textarea>
+                  <p class="field-hint">仅用于待做清单，不会写进刷题记录。</p>
+                </div>
+                <div class="field full">
+                  <div class="field-label">快捷标签</div>
+                  <div class="tag-quick">${quickTags}</div>
+                  <div class="tag-preview" id="todo-tag-preview"></div>
+                </div>
+              </div>
+              <div class="form-error" id="todo-form-error" role="alert">${icon('alert')}<span></span></div>
+            </div>
+            <div class="modal-foot">
+              <button class="btn btn-ghost" type="button" data-action="close-modal">取消</button>
+              <div class="spacer"></div>
+              <button class="btn btn-primary" type="submit">${todo ? '保存修改' : '添加待做'}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    openModal(html, () => {
+      updateTodoTagPreview();
+    });
+  }
+
+  function updateTodoTagPreview() {
+    const input = $('#todo-tags');
+    const preview = $('#todo-tag-preview');
+    if (!input || !preview) return;
+    preview.innerHTML = parseTags(input.value)
+      .map((tag) => `<span class="tag-chip">${escapeHtml(tag)}</span>`)
+      .join('');
+  }
+
+  async function handleTodoSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    if (form.dataset.submitting === '1') return;
+
+    const formData = new FormData(form);
+    const todoId = String(formData.get('todoId') || '');
+    const siteId = String(formData.get('siteId') || '');
+    const problemNumber = String(formData.get('problemNumber') || '').trim();
+    const problemTitle = String(formData.get('problemTitle') || '').trim();
+    const difficulty = String(formData.get('difficulty') || '').trim();
+    const tags = parseTags(formData.get('tags'));
+    const note = String(formData.get('note') || '').trim().slice(0, 500);
+
+    const fail = (message, focusId) => {
+      showFormError(form, message);
+      if (focusId) form.querySelector(`#${focusId}`)?.focus();
+    };
+
+    clearFormError(form);
+    if (!siteById(siteId)) return fail('请选择一个已经添加过的题站。', 'todo-site');
+    if (!problemNumber) return fail('请填写题号。', 'todo-number');
+    if (!problemTitle) return fail('请填写题目名称。', 'todo-title');
+
+    const existing = todoId
+      ? state.data.todos.find((todo) => todo.id === todoId)
+      : null;
+
+    form.dataset.submitting = '1';
+    $$('button[type="submit"]', form).forEach((button) => {
+      button.disabled = true;
+    });
+
+    try {
+      const now = new Date().toISOString();
+      if (existing) {
+        existing.siteId = siteId;
+        existing.problemNumber = problemNumber;
+        existing.problemTitle = problemTitle;
+        existing.difficulty = difficulty;
+        existing.tags = tags;
+        existing.note = note;
+        existing.updatedAt = now;
+      } else {
+        state.data.todos.unshift({
+          id: uid('todo'),
+          siteId,
+          problemNumber,
+          problemTitle,
+          difficulty,
+          tags,
+          note,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      await persist();
+      closeModal();
+      render();
+      showToast(existing ? '待做题目已更新。' : '已加入待做清单。');
+    } finally {
+      if (form.isConnected) {
+        form.dataset.submitting = '';
+        $$('button[type="submit"]', form).forEach((button) => {
+          button.disabled = false;
+        });
+      }
+    }
+  }
+
+  function startTodo(todoId) {
+    const todo = state.data.todos.find((item) => item.id === todoId);
+    if (!todo) return;
+    openRecordModal(null, {
+      date: todayKey(),
+      siteId: todo.siteId,
+      problemNumber: todo.problemNumber,
+      problemTitle: todo.problemTitle,
+      difficulty: todo.difficulty,
+      tags: todo.tags,
+      todoId: todo.id,
+    });
   }
 
   /* ------------------------------------------------------------------------ */
@@ -1613,6 +1966,22 @@
         requestAddRecord(element.dataset.date || state.filters.date || todayKey());
         break;
 
+      case 'add-todo':
+        requestAddTodo();
+        break;
+
+      case 'edit-todo':
+        openTodoModal(element.dataset.id);
+        break;
+
+      case 'delete-todo':
+        confirmDeleteTodo(element.dataset.id);
+        break;
+
+      case 'start-todo':
+        startTodo(element.dataset.id);
+        break;
+
       case 'add-site':
         state.pendingRecordDate = null;
         openSiteModal();
@@ -1701,7 +2070,7 @@
         break;
 
       case 'toggle-tag':
-        toggleTag(element.dataset.tag || '');
+        toggleTag(element.dataset.tag || '', element);
         break;
 
       case 'export-data':
@@ -1742,6 +2111,38 @@
     }
   }
 
+  function confirmDeleteTodo(todoId) {
+    const todo = state.data.todos.find((item) => item.id === todoId);
+    if (!todo) return;
+    const index = state.data.todos.indexOf(todo);
+    const snapshot = { ...todo, tags: [...(todo.tags || [])] };
+
+    openConfirm({
+      title: '删除这道待做题目？',
+      body: `<strong>${escapeHtml(todo.problemTitle)}</strong> 会从待做清单中移除。<br>删除后仍然可以撤销。`,
+      confirmText: '删除',
+      tone: 'danger',
+      iconName: 'trash',
+      onConfirm: async () => {
+        const liveIndex = state.data.todos.findIndex((item) => item.id === todoId);
+        if (liveIndex < 0) return;
+        state.data.todos.splice(liveIndex, 1);
+        await persist();
+        render();
+        showToast('待做题目已删除。', {
+          actionLabel: '撤销',
+          duration: 6000,
+          onAction: async () => {
+            state.data.todos.splice(Math.min(index, state.data.todos.length), 0, snapshot);
+            await persist();
+            render();
+            showToast('已恢复待做题目。');
+          },
+        });
+      },
+    });
+  }
+
   function confirmDeleteRecord(recordId) {
     const record = state.data.records.find((item) => item.id === recordId);
     if (!record) return;
@@ -1778,19 +2179,30 @@
     const site = siteById(siteId);
     if (!site) return;
     const records = state.data.records.filter((record) => record.siteId === siteId);
+    const todos = state.data.todos.filter((todo) => todo.siteId === siteId);
 
-    if (records.length) {
+    if (records.length || todos.length) {
+      const parts = [];
+      if (records.length) parts.push(`${records.length} 条刷题记录`);
+      if (todos.length) parts.push(`${todos.length} 道待做题目`);
+      const targetView = records.length ? 'records' : 'todos';
       openConfirm({
         title: '这个题站还在使用',
-        body: `<strong>${escapeHtml(site.name)}</strong> 下还有 ${records.length} 条刷题记录，暂时不能删除。<br>可以先查看这些记录，把它们改到其他题站或删除。`,
-        confirmText: '查看相关记录',
+        body: `<strong>${escapeHtml(site.name)}</strong> 下还有 ${parts.join('和')}，暂时不能删除。<br>可以先查看这些内容，把它们改到其他题站或删除。`,
+        confirmText: records.length ? '查看相关记录' : '查看待做题目',
         cancelText: '取消',
         tone: 'info',
         iconName: 'info',
         onConfirm: () => {
-          state.filters = { search: '', siteId, month: 'all', date: null };
-          if (state.view !== 'records') navigate('records');
-          else render();
+          if (targetView === 'records') {
+            state.filters = { search: '', siteId, month: 'all', date: null };
+            if (state.view !== 'records') navigate('records');
+            else render();
+          } else if (state.view !== 'todos') {
+            navigate('todos');
+          } else {
+            render();
+          }
         },
       });
       return;
@@ -1798,7 +2210,7 @@
 
     openConfirm({
       title: '删除这个题站？',
-      body: `将从题站列表中移除 <strong>${escapeHtml(site.name)}</strong>。它还没有任何刷题记录，删除后不影响已有数据。`,
+      body: `将从题站列表中移除 <strong>${escapeHtml(site.name)}</strong>。它还没有任何刷题记录或待做题目，删除后不影响已有数据。`,
       confirmText: '删除题站',
       tone: 'danger',
       iconName: 'trash',
@@ -1883,9 +2295,12 @@
     render();
 
     const summary = result.summary || {};
-    const dropped = (summary.droppedSites || 0) + (summary.droppedRecords || 0);
+    const dropped =
+      (summary.droppedSites || 0) +
+      (summary.droppedRecords || 0) +
+      (summary.droppedTodos || 0);
     showToast(
-      `导入完成：${summary.records ?? state.data.records.length} 条记录，${summary.sites ?? state.data.sites.length} 个题站${dropped ? `，跳过 ${dropped} 条无效数据` : ''}。`,
+      `导入完成：${summary.records ?? state.data.records.length} 条记录，${summary.sites ?? state.data.sites.length} 个题站，${summary.todos ?? state.data.todos.length} 道待做${dropped ? `，跳过 ${dropped} 条无效数据` : ''}。`,
       { type: 'success', duration: 6500 },
     );
   }
@@ -2058,6 +2473,10 @@
         updateTagPreview();
       }
 
+      if (event.target.id === 'todo-tags') {
+        updateTodoTagPreview();
+      }
+
       const form = event.target.closest('form');
       if (form) clearFormError(form);
     });
@@ -2079,10 +2498,17 @@
         const hint = $('#record-site-hint');
         if (hint) hint.textContent = site ? displayHost(site.url) : '';
       }
+
+      if (event.target.id === 'todo-site') {
+        const site = siteById(event.target.value);
+        const hint = $('#todo-site-hint');
+        if (hint) hint.textContent = site ? displayHost(site.url) : '';
+      }
     });
 
     document.addEventListener('submit', (event) => {
       if (event.target.id === 'record-form') handleRecordSubmit(event);
+      else if (event.target.id === 'todo-form') handleTodoSubmit(event);
       else if (event.target.id === 'site-form') handleSiteSubmit(event);
     });
 

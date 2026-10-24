@@ -1,6 +1,6 @@
 {
   "name": "algolog",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "题迹 - 本地算法竞赛刷题记录桌面应用",
   "main": "main.js",
   "private": true,

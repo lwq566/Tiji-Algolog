@@ -8,6 +8,7 @@
 
 - **题站管理**：手动添加任意 OJ（Codeforces、洛谷、AtCoder……），填写名称和网址，并选择标记颜色。
 - **刷题记录**：按日期记录题目名称、题号、题站、难度和标签。题站只能从已经添加的题站中选择。
+- **待做题目**：先把想做的题收集到清单，填写题站、题号、题目、难度、标签和备注；点“开始做”会带入刷题记录，保存后自动从待做清单移除。
 - **月历 + 年度热力图**：当天记录越多，格子颜色越深；点日期可以查看、补记或编辑当天题目。
 - **统计**：累计题数、活跃天数、当前连续、最长连续、本月题数、题站分布。
 - **查找与筛选**：按关键词、题站、月份筛选；日历中的日期也可以直接跳转到对应记录。
@@ -19,7 +20,7 @@
 
 ### 使用打包版
 
-从 GitHub 的 **Releases** 页面下载 `TiJi-AlgoLog-1.0.0-win64-fixed.zip`，解压到一个固定文件夹。
+从 GitHub 的 **Releases** 页面下载 `TiJi-AlgoLog-1.1.0-win64.zip`，解压到一个固定文件夹。
 
 然后在解压后的文件夹中打开命令提示符（在地址栏输入 `cmd` 回车），执行：
 
@@ -27,7 +28,7 @@
 TiJi-AlgoLog.exe --no-sandbox
 ```
 
-也可以右键压缩包内的 `启动题迹.cmd`，选择“以命令提示符运行”。如果双击它被文本编辑器打开，说明系统把 `.cmd` 关联成了文本文件，用上面的命令方式启动即可。
+如果双击 `TiJi-AlgoLog.exe` 被 SmartScreen 拦截，点“更多信息 → 仍要运行”即可。
 
 首次启动 Windows 可能弹出 SmartScreen 提示，点“更多信息 → 仍要运行”即可。
 
@@ -45,8 +46,9 @@ TiJi-AlgoLog.exe --no-sandbox
 1. 打开 **题站管理**，添加常用题站，例如：
    - 名称：`Codeforces`，网址：`codeforces.com`
    - 名称：`洛谷`，网址：`luogu.com.cn`
-2. 点击右上角 **记录一题**，选择日期和题站，填写题号、题目名称、难度、标签。
-3. 回到 **总览** 查看月历和年度热力图；点击日期查看当天题目。
+2. 想稍后做的题，先到 **待做题目** 添加；点“开始做”会带入刷题记录。
+3. 点击右上角 **记录一题**，选择日期和题站，填写题号、题目名称、难度、标签。
+4. 回到 **总览** 查看月历和年度热力图；点击日期查看当天题目。
 
 > 题站和刷题记录是两步独立操作：先维护题站，再记录题目；记录题目时不能填写未添加过的题站。
 
@@ -60,7 +62,7 @@ TiJi-AlgoLog.exe --no-sandbox
 
 ## 数据与备份
 
-- 数据文件：`程序目录\data\data.json`
+- 数据文件：`程序目录\data\data.json`（包含 `sites`、`records`、`todos` 三个数组）
 - 自动备份：`程序目录\data\backups\`
 - 左下角 **导出备份**：把所有题站和记录导出为一个 JSON 文件。
 - 左下角 **导入备份**：选择之前导出的 JSON 覆盖当前数据；覆盖前会自动保留一份当前数据。
@@ -103,6 +105,7 @@ src/renderer.js      应用状态、渲染、交互
 build/icon.ico       Windows 应用图标
 src/assets/icon.png  页面图标 / 窗口图标
 scripts/ui-test.mjs  自动化 UI 回归测试（开发用）
+scripts/todo-test.mjs 待做功能回归测试（开发用）
 screenshots/         README 使用的界面截图
 ```
 
@@ -115,7 +118,7 @@ screenshots/         README 使用的界面截图
 1. 打开 GitHub Desktop，登录 GitHub 账号。
 2. `File → Add local repository`，选择 `D:\deepseekwork`。
 3. 点击顶部的 `Publish repository`，填写名称（例如 `TiJi-AlgoLog`），选择 Public 或 Private。
-4. 发布后，在 GitHub 仓库的 `Releases` 页面新建 `v1.0.0`，把 `release/TiJi-AlgoLog-1.0.0-win64-fixed.zip` 作为附件上传。
+4. 发布后，在 GitHub 仓库的 `Releases` 页面新建 `v1.1.0`，把 `release/TiJi-AlgoLog-1.1.0-win64.zip` 作为附件上传。
 
 命令行方式：
 

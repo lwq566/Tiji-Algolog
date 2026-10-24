@@ -30,6 +30,11 @@
             <span class="nav-icon" data-icon="grid"></span>
             <span>总览</span>
           </button>
+          <button class="nav-item" type="button" data-view="todos">
+            <span class="nav-icon" data-icon="clock"></span>
+            <span>待做题目</span>
+            <span class="nav-badge" id="nav-todo-count">0</span>
+          </button>
           <button class="nav-item" type="button" data-view="records">
             <span class="nav-icon" data-icon="list"></span>
             <span>刷题记录</span>
@@ -96,6 +101,7 @@
         </header>
 
         <section class="view view-dashboard" id="view-dashboard" aria-label="总览"></section>
+        <section class="view view-todos" id="view-todos" aria-label="待做题目" hidden></section>
         <section class="view view-records" id="view-records" aria-label="刷题记录" hidden></section>
         <section class="view view-sites" id="view-sites" aria-label="题站管理" hidden></section>
       </main>

@@ -1932,6 +1932,95 @@ svg {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  To-do view                                                                */
+/* -------------------------------------------------------------------------- */
+
+.todo-list-card {
+  margin-bottom: 14px;
+}
+
+.todo-row {
+  align-items: center;
+}
+
+.todo-title-line {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  min-width: 0;
+}
+
+.todo-title-line .record-title {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  cursor: default;
+}
+
+.todo-title-line .record-title:hover {
+  color: var(--ink);
+}
+
+.todo-added {
+  flex: 0 0 auto;
+  color: var(--muted-2);
+  font-size: 8.5px;
+  white-space: nowrap;
+}
+
+.todo-note {
+  max-width: 620px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.todo-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 1;
+}
+
+.todo-actions .icon-btn {
+  width: 27px;
+  height: 27px;
+}
+
+.todo-actions .icon-btn svg {
+  width: 13.5px;
+  height: 13.5px;
+}
+
+.todo-start {
+  height: 28px;
+  padding: 0 9px;
+  margin-right: 3px;
+  border-radius: 8px;
+  font-size: 9.5px;
+}
+
+.todo-start svg {
+  width: 11px;
+  height: 11px;
+}
+
+@media (max-width: 760px) {
+  .todo-title-line {
+    flex-wrap: wrap;
+    gap: 3px 8px;
+  }
+
+  .todo-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Sites view                                                                */
 /* -------------------------------------------------------------------------- */
 

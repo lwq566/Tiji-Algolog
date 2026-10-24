@@ -70,7 +70,7 @@ process.on('unhandledRejection', (error) => {
 
 const DATA_FILE = path.join(USER_DATA, 'data.json');
 const BACKUP_DIR = path.join(USER_DATA, 'backups');
-const EMPTY_DATA = { version: 1, sites: [], records: [] };
+const EMPTY_DATA = { version: 1, sites: [], records: [], todos: [] };
 const MAX_IMPORT_BYTES = 30 * 1024 * 1024;
 const COLOR_RE = /^#[0-9a-f]{6}$/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -197,13 +197,52 @@ function normalizeData(raw) {
     });
   }
 
+  const todos = [];
+  const todoIds = new Set();
+  let droppedTodos = 0;
+
+  for (const item of Array.isArray(raw.todos) ? raw.todos.slice(0, 50000) : []) {
+    if (!item || typeof item !== 'object') {
+      droppedTodos += 1;
+      continue;
+    }
+    const siteId = cleanText(item.siteId, 80);
+    const problemTitle = cleanText(item.problemTitle ?? item.title, 200);
+    const problemNumber = cleanText(item.problemNumber ?? item.number, 80);
+    if (!siteIds.has(siteId) || !problemTitle || !problemNumber) {
+      droppedTodos += 1;
+      continue;
+    }
+    let id = validId(item.id) ? item.id : makeId('todo');
+    while (todoIds.has(id)) id = makeId('todo');
+    todoIds.add(id);
+
+    const tags = Array.isArray(item.tags)
+      ? [...new Set(item.tags.map((tag) => cleanText(tag, 24)).filter(Boolean))].slice(0, 12)
+      : [];
+
+    todos.push({
+      id,
+      siteId,
+      problemNumber,
+      problemTitle,
+      difficulty: cleanText(item.difficulty, 40),
+      tags,
+      note: cleanText(item.note, 500),
+      createdAt: normalizeIso(item.createdAt),
+      updatedAt: normalizeIso(item.updatedAt ?? item.createdAt),
+    });
+  }
+
   return {
-    data: { version: 1, sites, records },
+    data: { version: 1, sites, records, todos },
     summary: {
       sites: sites.length,
       records: records.length,
+      todos: todos.length,
       droppedSites,
       droppedRecords,
+      droppedTodos,
     },
   };
 }
@@ -300,8 +339,12 @@ async function readData() {
   try {
     const normalized = normalizeData(raw);
     let warning = null;
-    if (normalized.summary.droppedSites || normalized.summary.droppedRecords) {
-      warning = `读取时跳过了 ${normalized.summary.droppedSites} 个题站和 ${normalized.summary.droppedRecords} 条不完整记录。`;
+    if (
+      normalized.summary.droppedSites ||
+      normalized.summary.droppedRecords ||
+      normalized.summary.droppedTodos
+    ) {
+      warning = `读取时跳过了 ${normalized.summary.droppedSites} 个题站、${normalized.summary.droppedRecords} 条不完整记录和 ${normalized.summary.droppedTodos} 道异常待做题目。`;
     }
     return { data: normalized.data, warning };
   } catch (error) {
@@ -324,7 +367,14 @@ function validateSavePayload(data) {
   if (!Array.isArray(data.sites) || !Array.isArray(data.records)) {
     throw new Error('保存的数据缺少 sites 或 records。');
   }
-  if (data.sites.length > 5000 || data.records.length > 200000) {
+  if (data.todos !== undefined && !Array.isArray(data.todos)) {
+    throw new Error('保存的数据中 todos 格式不正确。');
+  }
+  if (
+    data.sites.length > 5000 ||
+    data.records.length > 200000 ||
+    (data.todos?.length || 0) > 50000
+  ) {
     throw new Error('数据量超出应用支持的范围。');
   }
   const json = JSON.stringify(data);
